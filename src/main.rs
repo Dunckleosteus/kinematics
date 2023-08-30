@@ -1,14 +1,15 @@
 use iced::mouse::Cursor;
 use iced::theme::Theme;
 use iced::widget::canvas::{self, Frame, Geometry, Path, Program, Stroke};
-use iced::widget::Canvas;
+use iced::widget::{column, Canvas};
 use iced::{Color, Element, Length, Point, Sandbox, Settings};
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Message {
     MouseMoved(Point),
     PlaceHolder,
     AddPoint(Point),
+    MoveLimb(Point),
 }
 
 pub fn main() -> iced::Result {
@@ -22,13 +23,12 @@ impl Sandbox for Hello {
     fn new() -> Hello {
         Hello {
             state: Circle {
-                limbs: vec![Limb::new(
-                    Some(Point::new(20.0, 30.0)),
-                    Some(Point::new(100.00, 100.0)),
+                limbs: Limb::new(
+                    Some(Point::new(400.0, 300.0)),
                     100.0,
                     100.0,
-                    Some(Box::new(Limb::new(None, None, 100.0, 100.0, None))),
-                )],
+                    Some(Box::new(Limb::new(None, 100.0, 100.0, None))),
+                ),
             },
         }
     }
@@ -37,20 +37,39 @@ impl Sandbox for Hello {
     }
     fn update(&mut self, message: Self::Message) {
         match message {
+            Message::MoveLimb(x) => {
+                self.state.limbs.start_point = Some(x);
+                self.state.limbs.calculate_b();
+            }
             _ => {}
         }
     }
     fn view(&self) -> Element<'_, Self::Message> {
-        Canvas::new(&self.state)
-            .width(Length::Fill)
-            .height(Length::Fill)
-            .into()
+        column![
+            iced::widget::row![
+                iced::widget::button("Left").on_press(
+                    if let Some(point) = self.state.limbs.start_point {
+                        Message::MoveLimb(Point::new(point.x + 5.0, point.y))
+                    } else {
+                        Message::PlaceHolder
+                    }
+                ),
+                iced::widget::button("Right"),
+                iced::widget::button("Rotate Clockwise"),
+                iced::widget::button("Rotate Anti Clockwise"),
+            ]
+            .width(Length::Fill),
+            Canvas::new(&self.state)
+                .width(Length::Fill)
+                .height(Length::Fill)
+        ]
+        .into()
     }
 }
 // canvas
 #[derive(Debug)]
 struct Circle {
-    limbs: Vec<Limb>,
+    limbs: Limb,
 }
 #[derive(Debug)]
 struct Limb {
@@ -62,31 +81,41 @@ struct Limb {
 }
 impl Limb {
     // recursively update children coordinates based on previous
+    fn calculate_b(&mut self) {
+        match self.start_point {
+            Some(point) => {
+                let end_point = Point::new(
+                    point.x + (self.alpha.cos() * self.length),
+                    point.y + (self.alpha.sin() * self.length),
+                );
+                self.end_point = Some(end_point);
+            }
+            None => {}
+        }
+    }
     fn update_children(&mut self) {
         match &mut self.next {
             Some(next) => {
                 if let Some(previous_point) = self.end_point {
-                    next.end_point = Some(previous_point);
+                    let end_point_x: f32 = previous_point.x + (next.alpha.cos() * next.length);
+                    let end_point_y: f32 = previous_point.y + (next.alpha.sin() * next.length);
+                    next.start_point = Some(previous_point);
+                    next.end_point = Some(Point::new(end_point_x, end_point_y));
                 }
                 next.update_children()
             }
             None => {}
         }
     }
-    fn new(
-        start_point: Option<Point>,
-        end_point: Option<Point>,
-        length: f32,
-        alpha: f32,
-        next: Option<Box<Limb>>,
-    ) -> Limb {
+    fn new(start_point: Option<Point>, length: f32, alpha: f32, next: Option<Box<Limb>>) -> Limb {
         let mut limb = Limb {
             start_point,
-            end_point,
+            end_point: None, // this will be calculated later with calculate_b()
             length,
             alpha,
             next,
         };
+        limb.calculate_b();
         limb.update_children();
         limb
     }
@@ -103,6 +132,10 @@ impl Limb {
                 }
                 None => {}
             },
+            None => {}
+        };
+        match &self.next {
+            Some(next) => next.render(frame),
             None => {}
         }
     }
@@ -130,9 +163,7 @@ impl Program<Message> for Circle {
         // Defining a new frame
         let mut frame = Frame::new(renderer, bounds.size());
         // iterating through limbs and drawing them to the screen
-        for l in self.limbs.iter() {
-            l.render(&mut frame);
-        }
+        self.limbs.render(&mut frame);
         vec![frame.into_geometry()]
     }
 }
