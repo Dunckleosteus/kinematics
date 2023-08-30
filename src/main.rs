@@ -1,5 +1,6 @@
 use iced::mouse::Cursor;
 use iced::theme::Theme;
+use iced::widget::canvas::path::lyon_path::Position;
 use iced::widget::canvas::{self, Frame, Geometry, Path, Program};
 use iced::widget::Canvas;
 use iced::{Color, Element, Length, Point, Sandbox, Settings};
@@ -7,6 +8,8 @@ use iced::{Color, Element, Length, Point, Sandbox, Settings};
 #[derive(Debug)]
 pub enum Message {
     MouseMoved(Point),
+    PlaceHolder,
+    AddPoint(Point),
 }
 
 pub fn main() -> iced::Result {
@@ -21,7 +24,7 @@ impl Sandbox for Hello {
         Hello {
             state: Circle {
                 radius: 50.0,
-                position: Point { x: 0.0, y: 0.0 },
+                positions: vec![Point { x: 0.0, y: 0.0 }],
             },
         }
     }
@@ -30,7 +33,9 @@ impl Sandbox for Hello {
     }
     fn update(&mut self, message: Self::Message) {
         match message {
-            Message::MouseMoved(x) => self.state.position = x,
+            Message::MouseMoved(x) => {}
+            Message::AddPoint(x) => self.state.positions.push(x), // adding x to point list
+            Message::PlaceHolder => {}
         }
     }
     fn view(&self) -> Element<'_, Self::Message> {
@@ -44,23 +49,38 @@ impl Sandbox for Hello {
 #[derive(Debug)]
 struct Circle {
     radius: f32,
-    position: Point,
+    positions: Vec<Point>,
 }
 impl Program<Message> for Circle {
     type State = ();
     fn update(
         &self,
         _state: &mut Self::State,
-        _event: canvas::Event,
+        event: canvas::Event,
         bounds: iced::Rectangle,
         cursor: iced::mouse::Cursor,
     ) -> (canvas::event::Status, Option<Message>) {
-        match cursor.position_in(bounds) {
-            Some(position) => (
-                canvas::event::Status::Captured,
-                Some(Message::MouseMoved(position)),
-            ),
-            None => (canvas::event::Status::Ignored, None),
+        let cursor_position = if let Some(position) = cursor.position_in(bounds) {
+            position
+        } else {
+            return (canvas::event::Status::Ignored, None);
+        };
+
+        match event {
+            canvas::Event::Mouse(mouse) => match mouse {
+                iced::mouse::Event::ButtonPressed(button) => match button {
+                    iced::mouse::Button::Left => (
+                        canvas::event::Status::Captured,
+                        Some(Message::AddPoint(cursor_position)),
+                    ),
+                    iced::mouse::Button::Right => {
+                        (canvas::event::Status::Captured, Some(Message::PlaceHolder))
+                    }
+                    _ => (canvas::event::Status::Ignored, None),
+                },
+                _ => (canvas::event::Status::Ignored, None),
+            },
+            _ => (canvas::event::Status::Ignored, None),
         }
     }
     fn draw(
@@ -72,8 +92,10 @@ impl Program<Message> for Circle {
         _cursor: Cursor,
     ) -> Vec<Geometry> {
         let mut frame = Frame::new(renderer, bounds.size());
-        let circle = Path::circle(self.position, self.radius);
-        frame.fill(&circle, Color::BLACK);
+        for i in self.positions.iter() {
+            let circle = Path::circle(*i, self.radius);
+            frame.fill(&circle, Color::BLACK);
+        }
         vec![frame.into_geometry()]
     }
 }
