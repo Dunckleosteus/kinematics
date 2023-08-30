@@ -1,7 +1,6 @@
 use iced::mouse::Cursor;
 use iced::theme::Theme;
-use iced::widget::canvas::path::lyon_path::Position;
-use iced::widget::canvas::{self, Frame, Geometry, Path, Program};
+use iced::widget::canvas::{self, Frame, Geometry, Path, Program, Stroke};
 use iced::widget::Canvas;
 use iced::{Color, Element, Length, Point, Sandbox, Settings};
 
@@ -23,8 +22,13 @@ impl Sandbox for Hello {
     fn new() -> Hello {
         Hello {
             state: Circle {
-                radius: 50.0,
-                positions: vec![Point { x: 0.0, y: 0.0 }],
+                limbs: vec![Limb::new(
+                    Some(Point::new(20.0, 30.0)),
+                    Some(Point::new(100.00, 100.0)),
+                    100.0,
+                    100.0,
+                    Some(Box::new(Limb::new(None, None, 100.0, 100.0, None))),
+                )],
             },
         }
     }
@@ -33,9 +37,7 @@ impl Sandbox for Hello {
     }
     fn update(&mut self, message: Self::Message) {
         match message {
-            Message::MouseMoved(x) => {}
-            Message::AddPoint(x) => self.state.positions.push(x), // adding x to point list
-            Message::PlaceHolder => {}
+            _ => {}
         }
     }
     fn view(&self) -> Element<'_, Self::Message> {
@@ -48,40 +50,74 @@ impl Sandbox for Hello {
 // canvas
 #[derive(Debug)]
 struct Circle {
-    radius: f32,
-    positions: Vec<Point>,
+    limbs: Vec<Limb>,
+}
+#[derive(Debug)]
+struct Limb {
+    start_point: Option<Point>,
+    end_point: Option<Point>,
+    length: f32,
+    alpha: f32,
+    next: Option<Box<Limb>>,
+}
+impl Limb {
+    // recursively update children coordinates based on previous
+    fn update_children(&mut self) {
+        match &mut self.next {
+            Some(next) => {
+                if let Some(previous_point) = self.end_point {
+                    next.end_point = Some(previous_point);
+                }
+                next.update_children()
+            }
+            None => {}
+        }
+    }
+    fn new(
+        start_point: Option<Point>,
+        end_point: Option<Point>,
+        length: f32,
+        alpha: f32,
+        next: Option<Box<Limb>>,
+    ) -> Limb {
+        let mut limb = Limb {
+            start_point,
+            end_point,
+            length,
+            alpha,
+            next,
+        };
+        limb.update_children();
+        limb
+    }
+    fn render(&self, frame: &mut Frame) {
+        match self.start_point {
+            Some(start_point) => match self.end_point {
+                Some(end_point) => {
+                    let line = Path::line(start_point, end_point);
+                    let start = Path::circle(start_point, 10.0);
+                    let end = Path::circle(end_point, 10.0);
+                    frame.stroke(&line, Stroke::default().with_width(2.0));
+                    frame.fill(&start, Color::BLACK);
+                    frame.fill(&end, Color::BLACK);
+                }
+                None => {}
+            },
+            None => {}
+        }
+    }
 }
 impl Program<Message> for Circle {
     type State = ();
     fn update(
         &self,
         _state: &mut Self::State,
-        event: canvas::Event,
-        bounds: iced::Rectangle,
-        cursor: iced::mouse::Cursor,
+        _event: canvas::Event,
+        _bounds: iced::Rectangle,
+        _cursor: iced::mouse::Cursor,
     ) -> (canvas::event::Status, Option<Message>) {
-        let cursor_position = if let Some(position) = cursor.position_in(bounds) {
-            position
-        } else {
-            return (canvas::event::Status::Ignored, None);
-        };
-
-        match event {
-            canvas::Event::Mouse(mouse) => match mouse {
-                iced::mouse::Event::ButtonPressed(button) => match button {
-                    iced::mouse::Button::Left => (
-                        canvas::event::Status::Captured,
-                        Some(Message::AddPoint(cursor_position)),
-                    ),
-                    iced::mouse::Button::Right => {
-                        (canvas::event::Status::Captured, Some(Message::PlaceHolder))
-                    }
-                    _ => (canvas::event::Status::Ignored, None),
-                },
-                _ => (canvas::event::Status::Ignored, None),
-            },
-            _ => (canvas::event::Status::Ignored, None),
-        }
+        // the function does nothing for now
+        (canvas::event::Status::Ignored, None)
     }
     fn draw(
         &self,
@@ -91,10 +127,11 @@ impl Program<Message> for Circle {
         bounds: iced::Rectangle,
         _cursor: Cursor,
     ) -> Vec<Geometry> {
+        // Defining a new frame
         let mut frame = Frame::new(renderer, bounds.size());
-        for i in self.positions.iter() {
-            let circle = Path::circle(*i, self.radius);
-            frame.fill(&circle, Color::BLACK);
+        // iterating through limbs and drawing them to the screen
+        for l in self.limbs.iter() {
+            l.render(&mut frame);
         }
         vec![frame.into_geometry()]
     }
