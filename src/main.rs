@@ -40,6 +40,7 @@ impl Sandbox for Hello {
             Message::MoveLimb(x) => {
                 self.state.limbs.start_point = Some(x);
                 self.state.limbs.calculate_b();
+                self.state.limbs.update_children();
             }
             _ => {}
         }
@@ -47,22 +48,48 @@ impl Sandbox for Hello {
     fn view(&self) -> Element<'_, Self::Message> {
         column![
             iced::widget::row![
-                iced::widget::button("Left").on_press(
+                // move limb right
+                iced::widget::button("Right").on_press(
                     if let Some(point) = self.state.limbs.start_point {
                         Message::MoveLimb(Point::new(point.x + 5.0, point.y))
                     } else {
                         Message::PlaceHolder
                     }
                 ),
-                iced::widget::button("Right"),
+                // move limb left
+                iced::widget::button("Left").on_press(
+                    if let Some(point) = self.state.limbs.start_point {
+                        Message::MoveLimb(Point::new(point.x - 5.0, point.y))
+                    } else {
+                        Message::PlaceHolder
+                    }
+                ),
+                // move limb down
+                iced::widget::button("Down").on_press(
+                    if let Some(point) = self.state.limbs.start_point {
+                        Message::MoveLimb(Point::new(point.x, point.y + 5.0))
+                    } else {
+                        Message::PlaceHolder
+                    }
+                ),
+                // moves limb upwards
+                iced::widget::button("Up").on_press(
+                    if let Some(point) = self.state.limbs.start_point {
+                        Message::MoveLimb(Point::new(point.x, point.y - 5.0))
+                    } else {
+                        Message::PlaceHolder
+                    }
+                ),
                 iced::widget::button("Rotate Clockwise"),
                 iced::widget::button("Rotate Anti Clockwise"),
             ]
-            .width(Length::Fill),
+            .width(Length::Fill)
+            .padding(5.0),
             Canvas::new(&self.state)
                 .width(Length::Fill)
                 .height(Length::Fill)
         ]
+        .align_items(iced::Alignment::Center)
         .into()
     }
 }
@@ -77,6 +104,7 @@ struct Limb {
     end_point: Option<Point>,
     length: f32,
     alpha: f32,
+    // recursive
     next: Option<Box<Limb>>,
 }
 impl Limb {
