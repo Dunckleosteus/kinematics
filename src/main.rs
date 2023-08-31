@@ -10,6 +10,7 @@ pub enum Message {
     PlaceHolder,
     AddPoint(Point),
     MoveLimb(Point),
+    RotateLimb(f32),
 }
 
 pub fn main() -> iced::Result {
@@ -26,8 +27,8 @@ impl Sandbox for Hello {
                 limbs: Limb::new(
                     Some(Point::new(400.0, 300.0)),
                     100.0,
-                    100.0,
-                    Some(Box::new(Limb::new(None, 100.0, 100.0, None))),
+                    0.0,
+                    Some(Box::new(Limb::new(None, 50.0, 90.0, None))),
                 ),
             },
         }
@@ -41,6 +42,9 @@ impl Sandbox for Hello {
                 self.state.limbs.start_point = Some(x);
                 self.state.limbs.calculate_b();
                 self.state.limbs.update_children();
+            }
+            Message::RotateLimb(x) => {
+                self.state.limbs.rotate_all(x);
             }
             _ => {}
         }
@@ -80,8 +84,10 @@ impl Sandbox for Hello {
                         Message::PlaceHolder
                     }
                 ),
-                iced::widget::button("Rotate Clockwise"),
-                iced::widget::button("Rotate Anti Clockwise"),
+                iced::widget::button("Rotate Clockwise")
+                    .on_press(Message::RotateLimb(self.state.limbs.alpha + 5.0)),
+                iced::widget::button("Rotate Anti Clockwise")
+                    .on_press(Message::RotateLimb(self.state.limbs.alpha - 5.0)),
             ]
             .width(Length::Fill)
             .padding(5.0),
@@ -121,6 +127,16 @@ impl Limb {
             None => {}
         }
     }
+    fn rotate_all(&mut self, angle: f32) {
+        self.alpha += angle.to_radians();
+        self.calculate_b();
+        self.update_children();
+        if let Some(next) = &mut self.next {
+            next.rotate_all(angle);
+            next.calculate_b();
+            next.update_children();
+        }
+    }
     fn update_children(&mut self) {
         match &mut self.next {
             Some(next) => {
@@ -140,7 +156,7 @@ impl Limb {
             start_point,
             end_point: None, // this will be calculated later with calculate_b()
             length,
-            alpha,
+            alpha: alpha.to_radians(),
             next,
         };
         limb.calculate_b();
