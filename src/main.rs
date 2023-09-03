@@ -11,24 +11,40 @@ pub enum Message {
     AddPoint(Point),
     MoveLimb(Point),
     RotateLimb(f32),
+    CountLimbs,
 }
 
 pub fn main() -> iced::Result {
     Hello::run(Settings::default())
 }
 pub struct Hello {
+    number_of_limbs: i32,
     state: Circle, // <- Canvas as a field
+}
+impl Hello {
+    fn get_total_limbs(&mut self) {
+        // calculate the length of the limb
+        if let Some(n) = self.state.limbs.next {
+            self.number_of_limbs += 1;
+        }
+    }
 }
 impl Sandbox for Hello {
     type Message = Message;
     fn new() -> Hello {
         Hello {
+            number_of_limbs: 0,
             state: Circle {
                 limbs: Limb::new(
                     Some(Point::new(400.0, 300.0)),
                     100.0,
                     0.0,
-                    Some(Box::new(Limb::new(None, 50.0, 90.0, None))),
+                    Some(Box::new(Limb::new(
+                        None,
+                        50.0,
+                        90.0,
+                        Some(Box::new(Limb::new(None, 50.0, 90.0, None))),
+                    ))),
                 ),
             },
         }
@@ -46,6 +62,7 @@ impl Sandbox for Hello {
             Message::RotateLimb(x) => {
                 self.state.limbs.rotate_all(x);
             }
+            Message::CountLimbs => self.get_total_limbs(),
             _ => {}
         }
     }
@@ -88,6 +105,7 @@ impl Sandbox for Hello {
                     .on_press(Message::RotateLimb(self.state.limbs.alpha + 5.0)),
                 iced::widget::button("Rotate Anti Clockwise")
                     .on_press(Message::RotateLimb(self.state.limbs.alpha - 5.0)),
+                iced::widget::button("Get number of limbs").on_press(Message::CountLimbs),
             ]
             .width(Length::Fill)
             .padding(5.0),
