@@ -8,7 +8,6 @@ use iced::{Color, Element, Length, Point, Sandbox, Settings};
 pub enum Message {
     MouseMoved(Point),
     PlaceHolder,
-    MoveRight, // TODO: replace this with move function
     Move(Direction),
     AddPoint(Point),
     RotateLimb(f32),
@@ -45,7 +44,6 @@ impl Sandbox for Hello {
     }
     fn update(&mut self, message: Self::Message) {
         match message {
-            Message::MoveRight => self.state.limbs.move_origin(Direction::Right),
             Message::Move(x) => self.state.limbs.move_origin(x),
             Message::RotateLimb(x) => {
                 //self.state.limbs.rotate_all(x);
