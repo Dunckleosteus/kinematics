@@ -21,12 +21,12 @@ pub struct Hello {
     number_of_limbs: i32,
     state: Circle, // <- Canvas as a field
 }
-impl Hello {
-    fn get_total_limbs(&mut self) {
-        // calculate the length of the limb
-        if let Some(n) = self.state.limbs.next {
-            self.number_of_limbs += 1;
-        }
+fn get_number_of_limbs(app: &mut Hello) {
+    app.number_of_limbs = 0;
+    app.number_of_limbs += 1;
+    while app.state.limbs.next.is_some() {
+        println!("helloooo");
+        get_number_of_limbs(app)
     }
 }
 impl Sandbox for Hello {
@@ -62,7 +62,7 @@ impl Sandbox for Hello {
             Message::RotateLimb(x) => {
                 self.state.limbs.rotate_all(x);
             }
-            Message::CountLimbs => self.get_total_limbs(),
+            Message::CountLimbs => get_number_of_limbs(self),
             _ => {}
         }
     }
