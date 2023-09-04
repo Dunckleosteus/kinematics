@@ -1,8 +1,8 @@
 use iced::mouse::Cursor;
 use iced::theme::Theme;
-use iced::widget::canvas::{self, Frame, Geometry, Program};
+use iced::widget::canvas::{self, stroke, Frame, Geometry, Path, Program, Stroke};
 use iced::widget::{column, Canvas};
-use iced::{Element, Length, Point, Sandbox, Settings};
+use iced::{Color, Element, Length, Point, Sandbox, Settings};
 
 #[derive(Debug, Clone)]
 pub enum Message {
@@ -18,16 +18,18 @@ pub fn main() -> iced::Result {
     Hello::run(Settings::default())
 }
 pub struct Hello {
-    number_of_limbs: i32,
     state: Circle, // <- Canvas as a field
 }
 impl Sandbox for Hello {
     type Message = Message;
     fn new() -> Hello {
         Hello {
-            number_of_limbs: 0,
             state: Circle {
-                limbs: Limb::new(vec![]),
+                limbs: Limb::new(vec![
+                    Segment::new(Some(Point::new(100.0, 100.0)), 100.0, 30.0),
+                    Segment::new(None, 100.0, 0.0),
+                    Segment::new(None, 100.0, 30.0),
+                ]),
             },
         }
     }
@@ -129,12 +131,7 @@ impl Segment {
             None => {}
         }
     }
-    fn new(
-        start_point: Option<Point>,
-        length: f32,
-        alpha: f32,
-        next: Option<Box<Limb>>,
-    ) -> Segment {
+    fn new(start_point: Option<Point>, length: f32, alpha: f32) -> Segment {
         let mut segment = Segment {
             start_point,
             end_point: None, // this will be calculated later with calculate_b()
@@ -170,11 +167,42 @@ impl Segment {
 //    }
 //}
 impl Limb {
-    fn new(vect: Vec<Segment>) -> Limb {
-        Limb { limbs: vect }
+    fn new(limbs: Vec<Segment>) -> Limb {
+        let mut limb = Limb { limbs };
+        limb.update_children();
+        limb
     }
     fn render(&self, frame: &mut Frame) {
-        // TODO
+        for seg in self.limbs.iter() {
+            // iterate through each point
+            if let Some(start) = seg.start_point {
+                // start point some ?
+                if let Some(end) = seg.end_point {
+                    // end point some ?
+                    let spoint = Path::circle(start, 5.0);
+                    let epoint = Path::circle(end, 5.0);
+                    let line = Path::line(start, end);
+                    frame.stroke(&line, Stroke::default().with_width(5.0));
+                    frame.fill(&spoint, Color::BLACK); // adding startpoint to canvas
+                    frame.fill(&epoint, Color::BLACK); // adding endpoint to canvas
+                } else {
+                    println!("No end point");
+                }
+            } else {
+                println!("No start point");
+            }
+        }
+    }
+    fn update_children(&mut self) {
+        // TODO: every segment needs to have the start point of the previous one
+        // get start point of first value
+        let mut iters = self.limbs.iter_mut();
+        let mut previous_point = iters.next().unwrap().end_point.unwrap();
+        for n in iters {
+            n.start_point = Some(previous_point);
+            n.calculate_b();
+            previous_point = n.end_point.unwrap();
+        }
     }
 }
 impl Program<Message> for Circle {
@@ -199,8 +227,7 @@ impl Program<Message> for Circle {
     ) -> Vec<Geometry> {
         // Defining a new frame
         let mut frame = Frame::new(renderer, bounds.size());
-        // iterating through limbs and drawing them to the screen
-        //self.limbs.render(&mut frame);
+        self.limbs.render(&mut frame); // rendering limbs to screen
         vec![frame.into_geometry()]
     }
 }
