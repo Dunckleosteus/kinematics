@@ -10,6 +10,8 @@ pub enum Message {
     PlaceHolder,
     AddPoint(Point),
     MoveLimb(Point),
+    RotateClockWise,
+    RotateAntiClockWise,
 }
 
 pub fn main() -> iced::Result {
@@ -26,8 +28,13 @@ impl Sandbox for Hello {
                 limbs: Limb::new(
                     Some(Point::new(400.0, 300.0)),
                     100.0,
-                    100.0,
-                    Some(Box::new(Limb::new(None, 100.0, 100.0, None))),
+                    0.0,
+                    Some(Box::new(Limb::new(
+                        None,
+                        90.0,
+                        0.0f32,
+                        Some(Box::new(Limb::new(None, 30.0, 90.0f32.to_degrees(), None))),
+                    ))),
                 ),
             },
         }
@@ -40,6 +47,17 @@ impl Sandbox for Hello {
             Message::MoveLimb(x) => {
                 self.state.limbs.start_point = Some(x);
                 self.state.limbs.calculate_b();
+                self.state.limbs.update_children();
+            }
+            Message::RotateAntiClockWise => {
+                self.state.limbs.alpha += 10f32.to_radians();
+                self.state.limbs.calculate_b();
+                self.state.limbs.update_children();
+            }
+            Message::RotateClockWise => {
+                self.state.limbs.alpha -= 10f32.to_radians();
+                self.state.limbs.calculate_b();
+                self.state.limbs.update_children();
             }
             _ => {}
         }
@@ -49,14 +67,35 @@ impl Sandbox for Hello {
             iced::widget::row![
                 iced::widget::button("Left").on_press(
                     if let Some(point) = self.state.limbs.start_point {
+                        Message::MoveLimb(Point::new(point.x - 5.0, point.y))
+                    } else {
+                        Message::PlaceHolder
+                    }
+                ),
+                iced::widget::button("Right").on_press(
+                    if let Some(point) = self.state.limbs.start_point {
                         Message::MoveLimb(Point::new(point.x + 5.0, point.y))
                     } else {
                         Message::PlaceHolder
                     }
                 ),
-                iced::widget::button("Right"),
-                iced::widget::button("Rotate Clockwise"),
-                iced::widget::button("Rotate Anti Clockwise"),
+                iced::widget::button("Up").on_press(
+                    if let Some(point) = self.state.limbs.start_point {
+                        Message::MoveLimb(Point::new(point.x, point.y - 5.0))
+                    } else {
+                        Message::PlaceHolder
+                    }
+                ),
+                iced::widget::button("Down").on_press(
+                    if let Some(point) = self.state.limbs.start_point {
+                        Message::MoveLimb(Point::new(point.x, point.y + 5.0))
+                    } else {
+                        Message::PlaceHolder
+                    }
+                ),
+                iced::widget::button("Rotate Clockwise").on_press(Message::RotateClockWise),
+                iced::widget::button("Rotate Anti Clockwise")
+                    .on_press(Message::RotateAntiClockWise),
             ]
             .width(Length::Fill),
             Canvas::new(&self.state)
@@ -101,6 +140,7 @@ impl Limb {
                     let end_point_y: f32 = previous_point.y + (next.alpha.sin() * next.length);
                     next.start_point = Some(previous_point);
                     next.end_point = Some(Point::new(end_point_x, end_point_y));
+                    next.alpha += self.alpha.round().to_radians(); // updating children alpha values
                 }
                 next.update_children()
             }
@@ -112,12 +152,12 @@ impl Limb {
             start_point,
             end_point: None, // this will be calculated later with calculate_b()
             length,
-            alpha,
+            alpha: alpha.to_radians(),
             next,
         };
         limb.calculate_b();
         limb.update_children();
-        limb
+        limb // return the valeu of limb
     }
     fn render(&self, frame: &mut Frame) {
         match self.start_point {
