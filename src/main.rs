@@ -8,12 +8,19 @@ use iced::{Color, Element, Length, Point, Sandbox, Settings};
 pub enum Message {
     MouseMoved(Point),
     PlaceHolder,
+    MoveRight, // TODO: replace this with move function
+    Move(Direction),
     AddPoint(Point),
-    MoveLimb(Point),
     RotateLimb(f32),
     CountLimbs,
 }
-
+#[derive(Debug, Clone)]
+pub enum Direction {
+    Left,
+    Right,
+    Up,
+    Down,
+}
 pub fn main() -> iced::Result {
     Hello::run(Settings::default())
 }
@@ -38,11 +45,8 @@ impl Sandbox for Hello {
     }
     fn update(&mut self, message: Self::Message) {
         match message {
-            Message::MoveLimb(x) => {
-                //self.state.limbs.start_point = Some(x);
-                //self.state.limbs.calculate_b();
-                //self.state.limbs.update_children();
-            }
+            Message::MoveRight => self.state.limbs.move_origin(Direction::Right),
+            Message::Move(x) => self.state.limbs.move_origin(x),
             Message::RotateLimb(x) => {
                 //self.state.limbs.rotate_all(x);
             }
@@ -52,39 +56,13 @@ impl Sandbox for Hello {
     }
     fn view(&self) -> Element<'_, Self::Message> {
         column![
-            //iced::widget::row![
-            //    // move limb right
-            //    iced::widget::button("Right").on_press(
-            //        if let Some(point) = self.state.limbs.start_point {
-            //            Message::MoveLimb(Point::new(point.x + 5.0, point.y))
-            //        } else {
-            //            Message::PlaceHolder
-            //        }
-            //    ),
-            // move limb left
-            //iced::widget::button("Left").on_press(
-            //    if let Some(point) = self.state.limbs.start_point {
-            //        Message::MoveLimb(Point::new(point.x - 5.0, point.y))
-            //    } else {
-            //        Message::PlaceHolder
-            //    }
-            //),
-            //// move limb down
-            //iced::widget::button("Down").on_press(
-            //    if let Some(point) = self.state.limbs.start_point {
-            //        Message::MoveLimb(Point::new(point.x, point.y + 5.0))
-            //    } else {
-            //        Message::PlaceHolder
-            //    }
-            //),
-            //// moves limb upwards
-            //iced::widget::button("Up").on_press(
-            //    if let Some(point) = self.state.limbs.start_point {
-            //        Message::MoveLimb(Point::new(point.x, point.y - 5.0))
-            //    } else {
-            //        Message::PlaceHolder
-            //    }
-            //),
+            iced::widget::row![
+                // move limb right
+                iced::widget::button("Right").on_press(Message::Move(Direction::Right)),
+                iced::widget::button("Left").on_press(Message::Move(Direction::Left)),
+                iced::widget::button("Up").on_press(Message::Move(Direction::Up)),
+                iced::widget::button("Down").on_press(Message::Move(Direction::Down)),
+            ],
             //iced::widget::button("Rotate Clockwise")
             //    .on_press(Message::RotateLimb(self.state.limbs.alpha + 5.0)),
             //iced::widget::button("Rotate Anti Clockwise")
@@ -118,7 +96,7 @@ struct Limb {
     limbs: Vec<Segment>,
 }
 impl Segment {
-    // recursively update children coordinates based on previous
+    // Calculates the end points cartesian cordiantes using alpha and length
     fn calculate_b(&mut self) {
         match self.start_point {
             Some(point) => {
@@ -191,6 +169,24 @@ impl Limb {
             } else {
                 println!("No start point");
             }
+        }
+    }
+    fn move_origin(&mut self, direction: Direction) {
+        // get mutable reference to first point in limbs
+        let speed: f32 = 5.0;
+        let first_point = self.limbs.iter_mut().next().unwrap();
+        match &mut first_point.start_point {
+            Some(start_point) => {
+                match direction {
+                    Direction::Up => start_point.y -= speed,
+                    Direction::Down => start_point.y += speed,
+                    Direction::Right => start_point.x += speed,
+                    Direction::Left => start_point.x -= speed,
+                }
+                first_point.calculate_b();
+                self.update_children();
+            }
+            None => {}
         }
     }
     fn update_children(&mut self) {
