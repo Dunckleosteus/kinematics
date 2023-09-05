@@ -10,6 +10,7 @@ pub enum Message {
     Move(Direction),
     RotateLimb(f32),
     GetLength, // gets overall limb length
+    Aim,
 }
 // used in move origin function
 #[derive(Debug, Clone)]
@@ -54,6 +55,11 @@ impl Sandbox for Hello {
                 None => self.state.target = Some(Target { position: x }),
             },
             Message::GetLength => self.state.limbs.get_total_length(),
+            Message::Aim => {
+                if let Some(target) = &self.state.target {
+                    self.state.limbs.aim_target(&target);
+                }
+            }
         }
     }
     fn view(&self) -> Element<'_, Self::Message> {
@@ -66,6 +72,7 @@ impl Sandbox for Hello {
                 iced::widget::button("Down").on_press(Message::Move(Direction::Down)),
                 iced::widget::button("Clockwise").on_press(Message::RotateLimb(5.0)),
                 iced::widget::button("Counter Clockwise").on_press(Message::RotateLimb(-5.0)),
+                iced::widget::button("Aim").on_press(Message::Aim),
             ]
             .padding(10.0),
             iced::widget::row![Canvas::new(&self.state)
@@ -167,6 +174,23 @@ impl Limb {
     fn get_total_length(&mut self) {
         let length: f32 = self.limbs.iter().map(|x| x.length).sum();
         self.length = Some(length);
+    }
+    fn aim_target(&mut self, target: &Target) {
+        let reach: f32 = match self.length {
+            Some(value) => value,
+            None => return,
+        };
+        if let Some(origin) = self.origin {
+            let target_distance = ((origin.x - target.position.x).powf(2.0)
+                + (origin.y - target.position.y).powf(2.0))
+            .sqrt();
+            println!("target: distance {}", target_distance);
+            if target_distance <= reach {
+                println!("The target is within reach")
+            } else if target_distance >= reach {
+                println!("The target is out of reach")
+            }
+        }
     }
     fn rotate(&mut self, rotation: f32, segment_id: Option<usize>) {
         let start_point: usize = segment_id.unwrap_or(0);
