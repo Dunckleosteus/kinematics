@@ -26,12 +26,14 @@ pub fn main() -> iced::Result {
     Hello::run(Settings::default())
 }
 pub struct Hello {
+    show_grid: bool,
     state: Circle, // <- Canvas as a field
 }
 impl Sandbox for Hello {
     type Message = Message;
     fn new() -> Hello {
         Hello {
+            show_grid: false,
             state: Circle {
                 limbs: Limb::new(vec![
                     Segment::new(Some(Point::new(100.0, 100.0)), 100.0, 30.0),
@@ -62,10 +64,12 @@ impl Sandbox for Hello {
                 iced::widget::button("Down").on_press(Message::Move(Direction::Down)),
                 iced::widget::button("Clockwise").on_press(Message::RotateLimb(5.0)),
                 iced::widget::button("Counter Clockwise").on_press(Message::RotateLimb(-5.0)),
-            ],
-            Canvas::new(&self.state)
+            ]
+            .padding(10.0),
+            iced::widget::row![Canvas::new(&self.state)
                 .width(Length::Fill)
-                .height(Length::Fill)
+                .height(Length::Fill)]
+            .padding(10.0)
         ]
         .align_items(iced::Alignment::Center)
         .into()
@@ -200,6 +204,45 @@ impl Program<Message> for Circle {
     ) -> Vec<Geometry> {
         // Defining a new frame
         let mut frame = Frame::new(renderer, bounds.size());
+        // rendering grid -- start
+        let width = bounds.width;
+        let height = bounds.height;
+        let grid_horizontal = 10;
+        let grid_vertical = 5;
+        let horizontal_delta = width / (grid_horizontal as f32);
+        let vertical_delta = height / (grid_vertical as f32);
+        // drawing horizontal gridlines
+        for y in 0..grid_vertical {
+            let start = Point::new(0.0, y as f32 * vertical_delta);
+            let end = Point::new(width, y as f32 * vertical_delta);
+            let line = Path::line(start, end);
+            frame.stroke(&line, Stroke::default().with_width(1.0));
+        }
+        for x in 0..grid_horizontal {
+            let start = Point::new(x as f32 * horizontal_delta, 0.0);
+            let end = Point::new(x as f32 * horizontal_delta, height);
+            let line = Path::line(start, end);
+            frame.stroke(&line, Stroke::default().with_width(1.0));
+        }
+        // drawing vertical gridlines
+        //for x in 0..grid_vertical {
+        //    let start = Point::new(x as f32 * vertical_delta, 0.0);
+        //    let end = Point::new(x as f32 * vertical_delta, height);
+        //    let line = Path::line(start, end);
+        //    frame.stroke(&line, Stroke::default().with_width(1.0));
+        //}
+        // render grid -- end
+        // render canvas extent -- start
+        let left = Path::line(Point::new(0.0, 0.0), Point::new(0.0, height));
+        frame.stroke(&left, Stroke::default().with_width(5.0));
+        let top = Path::line(Point::new(0.0, 0.0), Point::new(width, 0.0));
+        frame.stroke(&top, Stroke::default().with_width(5.0));
+        let right = Path::line(Point::new(width, 0.0), Point::new(width, height));
+        frame.stroke(&right, Stroke::default().with_width(10.0));
+        let bott = Path::line(Point::new(0.0, height), Point::new(width, height));
+        frame.stroke(&bott, Stroke::default().with_width(10.0));
+        // render canvas extent -- end
+
         self.limbs.render(&mut frame); // rendering limbs to screen
         vec![frame.into_geometry()]
     }
