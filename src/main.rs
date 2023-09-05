@@ -1,17 +1,15 @@
 use iced::mouse::Cursor;
 use iced::theme::Theme;
-use iced::widget::canvas::{self, stroke, Frame, Geometry, Path, Program, Stroke};
+use iced::widget::canvas::{self, Frame, Geometry, Path, Program, Stroke};
 use iced::widget::{column, Canvas};
 use iced::{Color, Element, Length, Point, Sandbox, Settings};
 
 #[derive(Debug, Clone)]
 pub enum Message {
-    MouseMoved(Point),
-    PlaceHolder,
+    MoveTarget(Point),
     Move(Direction),
-    AddPoint(Point),
     RotateLimb(f32),
-    CountLimbs,
+    GetLength, // gets overall limb length
 }
 // used in move origin function
 #[derive(Debug, Clone)]
@@ -26,20 +24,21 @@ pub fn main() -> iced::Result {
     Hello::run(Settings::default())
 }
 pub struct Hello {
-    show_grid: bool,
-    state: Circle, // <- Canvas as a field
+    _show_grid: bool, // TODO: add a toggle button to show grid
+    state: Circle,    // <- Canvas as a field
 }
 impl Sandbox for Hello {
     type Message = Message;
     fn new() -> Hello {
         Hello {
-            show_grid: false,
+            _show_grid: false,
             state: Circle {
                 limbs: Limb::new(vec![
                     Segment::new(Some(Point::new(100.0, 100.0)), 100.0, 30.0),
                     Segment::new(None, 100.0, 0.0),
                     Segment::new(None, 100.0, 30.0),
                 ]),
+                target: None,
             },
         }
     }
@@ -50,8 +49,11 @@ impl Sandbox for Hello {
         match message {
             Message::Move(x) => self.state.limbs.move_origin(x),
             Message::RotateLimb(x) => self.state.limbs.rotate(x, None),
-            Message::CountLimbs => {}
-            _ => {}
+            Message::MoveTarget(x) => match &mut self.state.target {
+                Some(target) => target.position = x,
+                None => self.state.target = Some(Target { position: x }),
+            },
+            Message::GetLength => self.state.limbs.get_total_length(),
         }
     }
     fn view(&self) -> Element<'_, Self::Message> {
@@ -64,6 +66,7 @@ impl Sandbox for Hello {
                 iced::widget::button("Down").on_press(Message::Move(Direction::Down)),
                 iced::widget::button("Clockwise").on_press(Message::RotateLimb(5.0)),
                 iced::widget::button("Counter Clockwise").on_press(Message::RotateLimb(-5.0)),
+                iced::widget::button("Get limb length").on_press(Message::GetLength),
             ]
             .padding(10.0),
             iced::widget::row![Canvas::new(&self.state)
@@ -79,6 +82,11 @@ impl Sandbox for Hello {
 #[derive(Debug)]
 struct Circle {
     limbs: Limb,
+    target: Option<Target>,
+}
+#[derive(Debug)]
+struct Target {
+    position: Point,
 }
 #[derive(Debug)]
 struct Segment {
@@ -90,6 +98,12 @@ struct Segment {
 #[derive(Debug)]
 struct Limb {
     limbs: Vec<Segment>,
+}
+impl Target {
+    fn render(&self, frame: &mut Frame) {
+        let circle = Path::circle(self.position, 5.0);
+        frame.fill(&circle, Color::from_rgb(1., 0., 0.)); // rendering target to canvas
+    }
 }
 impl Segment {
     // Calculates the end points cartesian cordiantes using alpha and length
@@ -143,6 +157,10 @@ impl Limb {
             }
         }
     }
+    fn get_total_length(&self) {
+        let length: f32 = self.limbs.iter().map(|x| x.length).sum();
+        println!("The total length of the limn is {} units", length);
+    }
     fn rotate(&mut self, rotation: f32, segment_id: Option<usize>) {
         let start_point: usize = segment_id.unwrap_or(0);
         let alpha = rotation.to_radians();
@@ -187,11 +205,32 @@ impl Program<Message> for Circle {
     fn update(
         &self,
         _state: &mut Self::State,
-        _event: canvas::Event,
-        _bounds: iced::Rectangle,
-        _cursor: iced::mouse::Cursor,
+        event: canvas::Event,
+        bounds: iced::Rectangle,
+        cursor: iced::mouse::Cursor,
     ) -> (canvas::event::Status, Option<Message>) {
-        // the function does nothing for now
+        // start by checking to see if cursor is in canvas, if it is not return
+        // empty message and exit update function
+        let cursor_position = if let Some(position) = cursor.position_in(bounds) {
+            position
+        } else {
+            return (iced::event::Status::Ignored, None);
+        };
+        match event {
+            iced::widget::canvas::Event::Mouse(mouse) => match mouse {
+                iced::mouse::Event::ButtonPressed(button) => match button {
+                    iced::mouse::Button::Left => {
+                        return (
+                            canvas::event::Status::Captured,
+                            Some(Message::MoveTarget(cursor_position)),
+                        )
+                    }
+                    _ => {}
+                },
+                _ => {}
+            },
+            _ => {}
+        }
         (canvas::event::Status::Ignored, None)
     }
     fn draw(
@@ -224,14 +263,6 @@ impl Program<Message> for Circle {
             let line = Path::line(start, end);
             frame.stroke(&line, Stroke::default().with_width(1.0));
         }
-        // drawing vertical gridlines
-        //for x in 0..grid_vertical {
-        //    let start = Point::new(x as f32 * vertical_delta, 0.0);
-        //    let end = Point::new(x as f32 * vertical_delta, height);
-        //    let line = Path::line(start, end);
-        //    frame.stroke(&line, Stroke::default().with_width(1.0));
-        //}
-        // render grid -- end
         // render canvas extent -- start
         let left = Path::line(Point::new(0.0, 0.0), Point::new(0.0, height));
         frame.stroke(&left, Stroke::default().with_width(5.0));
@@ -242,7 +273,9 @@ impl Program<Message> for Circle {
         let bott = Path::line(Point::new(0.0, height), Point::new(width, height));
         frame.stroke(&bott, Stroke::default().with_width(10.0));
         // render canvas extent -- end
-
+        if let Some(target) = &self.target {
+            target.render(&mut frame);
+        }
         self.limbs.render(&mut frame); // rendering limbs to screen
         vec![frame.into_geometry()]
     }
