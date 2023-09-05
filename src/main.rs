@@ -66,7 +66,6 @@ impl Sandbox for Hello {
                 iced::widget::button("Down").on_press(Message::Move(Direction::Down)),
                 iced::widget::button("Clockwise").on_press(Message::RotateLimb(5.0)),
                 iced::widget::button("Counter Clockwise").on_press(Message::RotateLimb(-5.0)),
-                iced::widget::button("Get limb length").on_press(Message::GetLength),
             ]
             .padding(10.0),
             iced::widget::row![Canvas::new(&self.state)
@@ -99,6 +98,7 @@ struct Segment {
 struct Limb {
     origin: Option<Point>,
     limbs: Vec<Segment>,
+    length: Option<f32>,
 }
 impl Target {
     fn render(&self, frame: &mut Frame) {
@@ -136,9 +136,11 @@ impl Limb {
         let mut limb = Limb {
             origin: None,
             limbs,
+            length: None,
         };
         limb.update_children();
         limb.update_origin();
+        limb.get_total_length();
         limb
     }
     fn render(&self, frame: &mut Frame) {
@@ -162,9 +164,9 @@ impl Limb {
             }
         }
     }
-    fn get_total_length(&self) {
+    fn get_total_length(&mut self) {
         let length: f32 = self.limbs.iter().map(|x| x.length).sum();
-        println!("The total length of the limn is {} units", length);
+        self.length = Some(length);
     }
     fn rotate(&mut self, rotation: f32, segment_id: Option<usize>) {
         let start_point: usize = segment_id.unwrap_or(0);
@@ -289,6 +291,16 @@ impl Program<Message> for Circle {
         if let Some(origin) = &self.limbs.origin {
             let shoulder = Path::circle(*origin, 10.0);
             frame.fill(&shoulder, Color::from_rgb(0.0, 1.0, 0.0));
+            // displayin maximum limb reach as a circle around limb origin
+            if let Some(length) = &self.limbs.length {
+                let reach = Path::circle(*origin, *length);
+                frame.stroke(
+                    &reach,
+                    Stroke::default()
+                        .with_width(1.0)
+                        .with_color(Color::from_rgba(0.2, 0.2, 0.2, 0.8)),
+                );
+            }
         }
         self.limbs.render(&mut frame); // rendering limbs to screen
         vec![frame.into_geometry()]
