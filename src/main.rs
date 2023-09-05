@@ -13,6 +13,7 @@ pub enum Message {
     RotateLimb(f32),
     CountLimbs,
 }
+// used in move origin function
 #[derive(Debug, Clone)]
 pub enum Direction {
     Left,
@@ -20,6 +21,7 @@ pub enum Direction {
     Up,
     Down,
 }
+// used in rotate function
 pub fn main() -> iced::Result {
     Hello::run(Settings::default())
 }
@@ -45,9 +47,7 @@ impl Sandbox for Hello {
     fn update(&mut self, message: Self::Message) {
         match message {
             Message::Move(x) => self.state.limbs.move_origin(x),
-            Message::RotateLimb(x) => {
-                //self.state.limbs.rotate_all(x);
-            }
+            Message::RotateLimb(x) => self.state.limbs.rotate(x, None),
             Message::CountLimbs => {}
             _ => {}
         }
@@ -60,15 +60,9 @@ impl Sandbox for Hello {
                 iced::widget::button("Left").on_press(Message::Move(Direction::Left)),
                 iced::widget::button("Up").on_press(Message::Move(Direction::Up)),
                 iced::widget::button("Down").on_press(Message::Move(Direction::Down)),
+                iced::widget::button("Clockwise").on_press(Message::RotateLimb(5.0)),
+                iced::widget::button("Counter Clockwise").on_press(Message::RotateLimb(-5.0)),
             ],
-            //iced::widget::button("Rotate Clockwise")
-            //    .on_press(Message::RotateLimb(self.state.limbs.alpha + 5.0)),
-            //iced::widget::button("Rotate Anti Clockwise")
-            //    .on_press(Message::RotateLimb(self.state.limbs.alpha - 5.0)),
-            //iced::widget::button("Get number of limbs").on_press(Message::CountLimbs),
-            //]
-            //.width(Length::Fill)
-            //.padding(5.0),
             Canvas::new(&self.state)
                 .width(Length::Fill)
                 .height(Length::Fill)
@@ -118,30 +112,6 @@ impl Segment {
         segment
     }
 }
-//fn rotate_all(&mut self, angle: f32) {
-//    self.alpha += angle.to_radians();
-//    self.calculate_b();
-//    self.update_children();
-//    if let Some(next) = &mut self.next {
-//        next.rotate_all(angle);
-//        next.calculate_b();
-//        next.update_children();
-//    }
-//}
-//fn update_children(&mut self) {
-//    match &mut self.next {
-//        Some(next) => {
-//            if let Some(previous_point) = self.end_point {
-//                let end_point_x: f32 = previous_point.x + (next.alpha.cos() * next.length);
-//                let end_point_y: f32 = previous_point.y + (next.alpha.sin() * next.length);
-//                next.start_point = Some(previous_point);
-//                next.end_point = Some(Point::new(end_point_x, end_point_y));
-//            }
-//            next.update_children()
-//        }
-//        None => {}
-//    }
-//}
 impl Limb {
     fn new(limbs: Vec<Segment>) -> Limb {
         let mut limb = Limb { limbs };
@@ -168,6 +138,15 @@ impl Limb {
                 println!("No start point");
             }
         }
+    }
+    fn rotate(&mut self, rotation: f32, segment_id: Option<usize>) {
+        let start_point: usize = segment_id.unwrap_or(0);
+        let alpha = rotation.to_radians();
+        for section in self.limbs.iter_mut().skip(start_point) {
+            section.alpha += alpha;
+            section.calculate_b();
+        }
+        self.update_children();
     }
     fn move_origin(&mut self, direction: Direction) {
         // get mutable reference to first point in limbs
