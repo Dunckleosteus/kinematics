@@ -97,6 +97,7 @@ struct Segment {
 }
 #[derive(Debug)]
 struct Limb {
+    origin: Option<Point>,
     limbs: Vec<Segment>,
 }
 impl Target {
@@ -132,8 +133,12 @@ impl Segment {
 }
 impl Limb {
     fn new(limbs: Vec<Segment>) -> Limb {
-        let mut limb = Limb { limbs };
+        let mut limb = Limb {
+            origin: None,
+            limbs,
+        };
         limb.update_children();
+        limb.update_origin();
         limb
     }
     fn render(&self, frame: &mut Frame) {
@@ -184,13 +189,18 @@ impl Limb {
                 }
                 first_point.calculate_b();
                 self.update_children();
+                self.update_origin();
             }
             None => {}
         }
     }
+    fn update_origin(&mut self) {
+        let first_point = self.limbs.iter_mut().next().unwrap();
+        if let Some(start_point) = first_point.start_point {
+            self.origin = Some(start_point.clone());
+        }
+    }
     fn update_children(&mut self) {
-        // TODO: every segment needs to have the start point of the previous one
-        // get start point of first value
         let mut iters = self.limbs.iter_mut();
         let mut previous_point = iters.next().unwrap().end_point.unwrap();
         for n in iters {
@@ -275,6 +285,10 @@ impl Program<Message> for Circle {
         // render canvas extent -- end
         if let Some(target) = &self.target {
             target.render(&mut frame);
+        }
+        if let Some(origin) = &self.limbs.origin {
+            let shoulder = Path::circle(*origin, 10.0);
+            frame.fill(&shoulder, Color::from_rgb(0.0, 1.0, 0.0));
         }
         self.limbs.render(&mut frame); // rendering limbs to screen
         vec![frame.into_geometry()]
