@@ -188,7 +188,8 @@ impl Limb {
             println!("target: distance {}", target_distance);
             // check to see if target is in reach
             if target_distance <= reach {
-                println!("The target is within reach")
+                println!("The target is within reach");
+                self.fabrik(target);
             } else if target_distance >= reach {
                 // if target is out of reach then we have to get the
                 // azimuth of the target relative to the origin
@@ -201,6 +202,24 @@ impl Limb {
                 self.straight_point(theta);
             }
         }
+    }
+    fn fabrik(&mut self, target: &Target) {
+        // this is the function that used the FABRIK algorithm to find optimal the optimal
+        // angles between each segment to reach target
+        let start_segment = match self.limbs.iter().next() {
+            Some(val) => val.start_point,
+            None => {
+                println!("fabrik: no start segment in limb...");
+                return;
+            }
+        };
+        let start_point = match start_segment {
+            Some(val) => val,
+            None => {
+                println!("fabrik: no start point in limb...");
+                return;
+            } // if there is no value, exit function
+        };
     }
     fn straight_point(&mut self, angle: f32) {
         // this function straightens all the limb segments and rotates
