@@ -188,7 +188,12 @@ impl Limb {
             if target_distance <= reach {
                 println!("The target is within reach")
             } else if target_distance >= reach {
-                println!("The target is out of reach")
+                // if target is out of reach then we have to get the
+                // azimuth of the target relative to the origin
+                println!("The target is out of reach");
+                let theta =
+                    ((origin.y - target.position.y) / (origin.x - target.position.x)).atan();
+                println!("Theta: {}", theta.to_degrees());
             }
         }
     }
