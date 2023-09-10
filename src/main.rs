@@ -35,7 +35,7 @@ impl Sandbox for Hello {
             _show_grid: false,
             state: Circle {
                 limbs: Limb::new(vec![
-                    Segment::new(Some(Point::new(100.0, 100.0)), 100.0, 30.0),
+                    Segment::new(Some(Point::new(500.0, 300.0)), 100.0, 30.0),
                     Segment::new(None, 100.0, 0.0),
                     Segment::new(None, 100.0, 30.0),
                 ]),
@@ -129,11 +129,16 @@ impl Segment {
     }
     fn calculate_a(&mut self) {
         // calculates start point based on end point
+        // TODO: fix this
         match self.end_point {
             Some(point) => {
+                // point is end point
+                let original = self.start_point.unwrap().clone();
+                let azimuth = azimuth(original, point);
+                println!("{}", azimuth);
                 let start_point = Point::new(
-                    point.x + (-self.alpha.cos() * self.length),
-                    point.y + (-self.alpha.sin() * self.length),
+                    point.x + (-azimuth.cos() * self.length),
+                    point.y + (-azimuth.sin() * self.length),
                 );
                 self.start_point = Some(start_point);
             }
@@ -207,8 +212,7 @@ impl Limb {
                 // if target is out of reach then we have to get the
                 // azimuth of the target relative to the origin
                 println!("The target is out of reach");
-                let theta =
-                    ((origin.y - target.position.y) / (origin.x - target.position.x)).atan();
+                let theta = azimuth(origin, target.position);
                 println!("Theta: {}", theta.to_degrees());
                 // now we need to straighten all the limb segments and point them towards the
                 // target
@@ -237,7 +241,7 @@ impl Limb {
         let segments = &mut self.limbs;
         let a = segments.iter_mut().last().unwrap();
         a.end_point = Some(target.position);
-        //a.calculate_a();
+        a.calculate_a();
     }
     fn straight_point(&mut self, angle: f32) {
         // this function straightens all the limb segments and rotates
@@ -385,4 +389,9 @@ impl Program<Message> for Circle {
         self.limbs.render(&mut frame); // rendering limbs to screen
         vec![frame.into_geometry()]
     }
+}
+fn azimuth(point1: Point, point2: Point) -> f32 {
+    let deltax = point2.x - point1.x;
+    let deltay = point2.y - point1.y;
+    f32::atan2(deltay, deltax)
 }
