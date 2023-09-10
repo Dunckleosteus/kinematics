@@ -127,6 +127,19 @@ impl Segment {
             None => {}
         }
     }
+    fn calculate_a(&mut self) {
+        // calculates start point based on end point
+        match self.end_point {
+            Some(point) => {
+                let start_point = Point::new(
+                    point.x + (-self.alpha.cos() * self.length),
+                    point.y + (-self.alpha.sin() * self.length),
+                );
+                self.start_point = Some(start_point);
+            }
+            None => {}
+        }
+    }
     fn new(start_point: Option<Point>, length: f32, alpha: f32) -> Segment {
         let mut segment = Segment {
             start_point,
@@ -220,6 +233,11 @@ impl Limb {
                 return;
             } // if there is no value, exit function
         };
+        // mutable reference to self.limbs vector
+        let segments = &mut self.limbs;
+        let a = segments.iter_mut().last().unwrap();
+        a.end_point = Some(target.position);
+        //a.calculate_a();
     }
     fn straight_point(&mut self, angle: f32) {
         // this function straightens all the limb segments and rotates
