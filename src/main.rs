@@ -181,10 +181,12 @@ impl Limb {
             None => return,
         };
         if let Some(origin) = self.origin {
+            // calculate distance between target and origing
             let target_distance = ((origin.x - target.position.x).powf(2.0)
                 + (origin.y - target.position.y).powf(2.0))
             .sqrt();
             println!("target: distance {}", target_distance);
+            // check to see if target is in reach
             if target_distance <= reach {
                 println!("The target is within reach")
             } else if target_distance >= reach {
@@ -194,8 +196,20 @@ impl Limb {
                 let theta =
                     ((origin.y - target.position.y) / (origin.x - target.position.x)).atan();
                 println!("Theta: {}", theta.to_degrees());
+                // now we need to straighten all the limb segments and point them towards the
+                // target
+                self.straight_point(theta);
             }
         }
+    }
+    fn straight_point(&mut self, angle: f32) {
+        // this function straightens all the limb segments and rotates
+        // the limb to point towards the target. Called when the limb is
+        // out of reach.
+        for segment in self.limbs.iter_mut() {
+            segment.alpha = 0.0;
+        }
+        self.rotate(angle.to_degrees(), None);
     }
     fn rotate(&mut self, rotation: f32, segment_id: Option<usize>) {
         let start_point: usize = segment_id.unwrap_or(0);
