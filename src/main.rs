@@ -249,7 +249,6 @@ impl Limb {
             }
         }
     }
-    // TODO: finish this function
     fn fabrik(&mut self, target: &Target) {
         // this is the function that used the FABRIK algorithm to find optimal the optimal
         // angles between each segment to reach target
@@ -353,22 +352,10 @@ impl Program<Message> for Circle {
         } else {
             return (iced::event::Status::Ignored, None);
         };
-        match event {
-            iced::widget::canvas::Event::Mouse(mouse) => match mouse {
-                iced::mouse::Event::ButtonPressed(button) => match button {
-                    iced::mouse::Button::Left => {
-                        return (
-                            canvas::event::Status::Captured,
-                            Some(Message::MoveTarget(cursor_position)),
-                        )
-                    }
-                    _ => {}
-                },
-                _ => {}
-            },
-            _ => {}
-        }
-        (canvas::event::Status::Ignored, None)
+        (
+            iced::event::Status::Captured,
+            Some(Message::MoveTarget(cursor_position)),
+        )
     }
     fn draw(
         &self,
