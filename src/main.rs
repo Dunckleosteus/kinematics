@@ -41,8 +41,10 @@ impl Sandbox for Hello {
             state: Circle {
                 limbs: Limb::new(vec![
                     Segment::new(Some(Point::new(500.0, 300.0)), 100.0, 30.0),
-                    Segment::new(None, 100.0, 0.0),
-                    Segment::new(None, 100.0, 30.0),
+                    Segment::new(None, 40.0, 0.0),
+                    Segment::new(None, 40.0, 30.0),
+                    Segment::new(None, 40.0, 30.0),
+                    Segment::new(None, 40.0, 30.0),
                 ]),
                 target: None,
             },
@@ -71,14 +73,16 @@ impl Sandbox for Hello {
         column![
             iced::widget::row![
                 // move limb right
-                iced::widget::button("Right").on_press(Message::Move(Direction::Right)),
-                iced::widget::button("Left").on_press(Message::Move(Direction::Left)),
-                iced::widget::button("Up").on_press(Message::Move(Direction::Up)),
-                iced::widget::button("Down").on_press(Message::Move(Direction::Down)),
-                iced::widget::button("Clockwise").on_press(Message::RotateLimb(5.0)),
-                iced::widget::button("Counter Clockwise").on_press(Message::RotateLimb(-5.0)),
+                //iced::widget::button("Right").on_press(Message::Move(Direction::Right)),
+                //iced::widget::button("Left").on_press(Message::Move(Direction::Left)),
+                //iced::widget::button("Up").on_press(Message::Move(Direction::Up)),
+                //iced::widget::button("Down").on_press(Message::Move(Direction::Down)),
+                //iced::widget::button("Clockwise").on_press(Message::RotateLimb(5.0)),
+                //iced::widget::button("Counter Clockwise").on_press(Message::RotateLimb(-5.0)),
+                iced::widget::text("Click on screen to place target, then press aim"),
                 iced::widget::button("Aim").on_press(Message::Aim),
             ]
+            .spacing(10.0)
             .padding(10.0),
             iced::widget::row![Canvas::new(&self.state)
                 .width(Length::Fill)
@@ -249,33 +253,35 @@ impl Limb {
     fn fabrik(&mut self, target: &Target) {
         // this is the function that used the FABRIK algorithm to find optimal the optimal
         // angles between each segment to reach target
-        // Backwards: end effector -> origin
-        let origin = match self.origin {
-            Some(val) => val,
-            None => return,
-        };
-        let segments = &mut self.limbs;
-        let mut segments_iter = segments.iter_mut().rev();
-        let a = segments_iter.next().unwrap();
-        a.end_point = Some(target.position);
-        a.calculate_a(Fabrik::Backwards);
-        let mut previous_point = a.start_point;
-        for seg in segments_iter {
-            seg.end_point = previous_point;
-            seg.calculate_a(Fabrik::Backwards);
-            previous_point = seg.start_point;
-        }
-        // forwards: origin -> end effector
-        let segments = &mut self.limbs;
-        let mut segments_iter = segments.iter_mut();
-        let a = segments_iter.next().unwrap();
-        a.start_point = Some(origin);
-        a.calculate_a(Fabrik::Forwards);
-        let mut previous_point = a.end_point;
-        for seg in segments_iter {
-            seg.start_point = previous_point;
-            seg.calculate_a(Fabrik::Forwards);
-            previous_point = seg.end_point;
+        for _i in 0..10 {
+            // Backwards: end effector -> origin
+            let origin = match self.origin {
+                Some(val) => val,
+                None => return,
+            };
+            let segments = &mut self.limbs;
+            let mut segments_iter = segments.iter_mut().rev();
+            let a = segments_iter.next().unwrap();
+            a.end_point = Some(target.position);
+            a.calculate_a(Fabrik::Backwards);
+            let mut previous_point = a.start_point;
+            for seg in segments_iter {
+                seg.end_point = previous_point;
+                seg.calculate_a(Fabrik::Backwards);
+                previous_point = seg.start_point;
+            }
+            // forwards: origin -> end effector
+            let segments = &mut self.limbs;
+            let mut segments_iter = segments.iter_mut();
+            let a = segments_iter.next().unwrap();
+            a.start_point = Some(origin);
+            a.calculate_a(Fabrik::Forwards);
+            let mut previous_point = a.end_point;
+            for seg in segments_iter {
+                seg.start_point = previous_point;
+                seg.calculate_a(Fabrik::Forwards);
+                previous_point = seg.end_point;
+            }
         }
     }
     fn straight_point(&mut self, angle: f32) {
