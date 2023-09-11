@@ -239,9 +239,16 @@ impl Limb {
         };
         // mutable reference to self.limbs vector
         let segments = &mut self.limbs;
-        let a = segments.iter_mut().last().unwrap();
+        let mut segments_iter = segments.iter_mut().rev();
+        let a = segments_iter.next().unwrap();
         a.end_point = Some(target.position);
         a.calculate_a();
+        let mut previous_point = a.start_point;
+        for seg in segments_iter {
+            seg.end_point = previous_point;
+            seg.calculate_a();
+            previous_point = seg.start_point;
+        }
     }
     fn straight_point(&mut self, angle: f32) {
         // this function straightens all the limb segments and rotates
