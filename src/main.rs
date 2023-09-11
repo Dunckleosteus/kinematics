@@ -41,10 +41,8 @@ impl Sandbox for Hello {
             state: Circle {
                 limbs: Limb::new(vec![
                     Segment::new(Some(Point::new(500.0, 300.0)), 100.0, 30.0),
-                    Segment::new(None, 40.0, 0.0),
-                    Segment::new(None, 40.0, 30.0),
-                    Segment::new(None, 40.0, 30.0),
-                    Segment::new(None, 40.0, 30.0),
+                    Segment::new(None, 100.0, 0.0),
+                    Segment::new(None, 50.0, 30.0),
                 ]),
                 target: None,
             },
@@ -72,11 +70,9 @@ impl Sandbox for Hello {
     }
     fn view(&self) -> Element<'_, Self::Message> {
         column![
-            iced::widget::row![iced::widget::text(
-                "Click on screen to place target, then press aim"
-            ),]
-            .spacing(10.0)
-            .padding(10.0),
+            iced::widget::row![iced::widget::text("Move mouse on canvas"),]
+                .spacing(10.0)
+                .padding(10.0),
             iced::widget::row![Canvas::new(&self.state)
                 .width(Length::Fill)
                 .height(Length::Fill)]
@@ -139,7 +135,6 @@ impl Segment {
                         // point is end point
                         let original = self.start_point.unwrap().clone();
                         let azimuth = azimuth(original, point);
-                        println!("{}", azimuth);
                         let start_point = Point::new(
                             point.x + (-azimuth.cos() * self.length),
                             point.y + (-azimuth.sin() * self.length),
@@ -155,7 +150,6 @@ impl Segment {
                         // point is end point
                         let original = self.end_point.unwrap().clone();
                         let azimuth = azimuth(original, point);
-                        println!("{}", azimuth);
                         let end_point = Point::new(
                             point.x + (-azimuth.cos() * self.length),
                             point.y + (-azimuth.sin() * self.length),
