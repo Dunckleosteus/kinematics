@@ -10,7 +10,7 @@ pub enum Message {
     Move(Direction),
     RotateLimb(f32),
     GetLength, // gets overall limb length
-    Aim,
+    Aim(Point),
 }
 // used in move origin function
 #[derive(Debug, Clone)]
@@ -62,7 +62,8 @@ impl Sandbox for Hello {
                 None => self.state.target = Some(Target { position: x }),
             },
             Message::GetLength => self.state.limbs.get_total_length(),
-            Message::Aim => {
+            Message::Aim(x) => {
+                self.state.target = Some(Target { position: x });
                 if let Some(target) = &self.state.target {
                     self.state.limbs.aim_target(&target);
                 }
@@ -71,17 +72,9 @@ impl Sandbox for Hello {
     }
     fn view(&self) -> Element<'_, Self::Message> {
         column![
-            iced::widget::row![
-                // move limb right
-                //iced::widget::button("Right").on_press(Message::Move(Direction::Right)),
-                //iced::widget::button("Left").on_press(Message::Move(Direction::Left)),
-                //iced::widget::button("Up").on_press(Message::Move(Direction::Up)),
-                //iced::widget::button("Down").on_press(Message::Move(Direction::Down)),
-                //iced::widget::button("Clockwise").on_press(Message::RotateLimb(5.0)),
-                //iced::widget::button("Counter Clockwise").on_press(Message::RotateLimb(-5.0)),
-                iced::widget::text("Click on screen to place target, then press aim"),
-                iced::widget::button("Aim").on_press(Message::Aim),
-            ]
+            iced::widget::row![iced::widget::text(
+                "Click on screen to place target, then press aim"
+            ),]
             .spacing(10.0)
             .padding(10.0),
             iced::widget::row![Canvas::new(&self.state)
@@ -232,17 +225,10 @@ impl Limb {
             let target_distance = ((origin.x - target.position.x).powf(2.0)
                 + (origin.y - target.position.y).powf(2.0))
             .sqrt();
-            println!("target: distance {}", target_distance);
-            // check to see if target is in reach
             if target_distance <= reach {
-                println!("The target is within reach");
                 self.fabrik(target);
             } else if target_distance >= reach {
-                // if target is out of reach then we have to get the
-                // azimuth of the target relative to the origin
-                println!("The target is out of reach");
                 let theta = azimuth(origin, target.position);
-                println!("Theta: {}", theta.to_degrees());
                 // now we need to straighten all the limb segments and point them towards the
                 // target
                 self.straight_point(theta);
@@ -341,7 +327,7 @@ impl Program<Message> for Circle {
     fn update(
         &self,
         _state: &mut Self::State,
-        event: canvas::Event,
+        _event: canvas::Event,
         bounds: iced::Rectangle,
         cursor: iced::mouse::Cursor,
     ) -> (canvas::event::Status, Option<Message>) {
@@ -354,7 +340,7 @@ impl Program<Message> for Circle {
         };
         (
             iced::event::Status::Captured,
-            Some(Message::MoveTarget(cursor_position)),
+            Some(Message::Aim(cursor_position)),
         )
     }
     fn draw(
