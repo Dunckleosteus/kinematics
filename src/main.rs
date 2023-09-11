@@ -20,6 +20,11 @@ pub enum Direction {
     Up,
     Down,
 }
+#[derive(Debug, Clone)]
+pub enum Fabrik {
+    Forwards,
+    Backwards,
+}
 // used in rotate function
 pub fn main() -> iced::Result {
     Hello::run(Settings::default())
@@ -127,22 +132,42 @@ impl Segment {
             None => {}
         }
     }
-    fn calculate_a(&mut self) {
+    fn calculate_a(&mut self, direction: Fabrik) {
         // calculates start point based on end point
-        // TODO: fix this
-        match self.end_point {
-            Some(point) => {
-                // point is end point
-                let original = self.start_point.unwrap().clone();
-                let azimuth = azimuth(original, point);
-                println!("{}", azimuth);
-                let start_point = Point::new(
-                    point.x + (-azimuth.cos() * self.length),
-                    point.y + (-azimuth.sin() * self.length),
-                );
-                self.start_point = Some(start_point);
+        // the calculations depends on if the algorithm is running in forward or backwards
+        match direction {
+            Fabrik::Backwards => {
+                match self.end_point {
+                    Some(point) => {
+                        // point is end point
+                        let original = self.start_point.unwrap().clone();
+                        let azimuth = azimuth(original, point);
+                        println!("{}", azimuth);
+                        let start_point = Point::new(
+                            point.x + (-azimuth.cos() * self.length),
+                            point.y + (-azimuth.sin() * self.length),
+                        );
+                        self.start_point = Some(start_point);
+                    }
+                    None => {}
+                }
             }
-            None => {}
+            Fabrik::Forwards => {
+                match self.start_point {
+                    Some(point) => {
+                        // point is end point
+                        let original = self.end_point.unwrap().clone();
+                        let azimuth = azimuth(original, point);
+                        println!("{}", azimuth);
+                        let end_point = Point::new(
+                            point.x + (-azimuth.cos() * self.length),
+                            point.y + (-azimuth.sin() * self.length),
+                        );
+                        self.end_point = Some(end_point);
+                    }
+                    None => {}
+                }
+            }
         }
     }
     fn new(start_point: Option<Point>, length: f32, alpha: f32) -> Segment {
@@ -220,34 +245,37 @@ impl Limb {
             }
         }
     }
+    // TODO: finish this function
     fn fabrik(&mut self, target: &Target) {
         // this is the function that used the FABRIK algorithm to find optimal the optimal
         // angles between each segment to reach target
-        let start_segment = match self.limbs.iter().next() {
-            Some(val) => val.start_point,
-            None => {
-                println!("fabrik: no start segment in limb...");
-                return;
-            }
-        };
-        let start_point = match start_segment {
+        // Backwards: end effector -> origin
+        let origin = match self.origin {
             Some(val) => val,
-            None => {
-                println!("fabrik: no start point in limb...");
-                return;
-            } // if there is no value, exit function
+            None => return,
         };
-        // mutable reference to self.limbs vector
         let segments = &mut self.limbs;
         let mut segments_iter = segments.iter_mut().rev();
         let a = segments_iter.next().unwrap();
         a.end_point = Some(target.position);
-        a.calculate_a();
+        a.calculate_a(Fabrik::Backwards);
         let mut previous_point = a.start_point;
         for seg in segments_iter {
             seg.end_point = previous_point;
-            seg.calculate_a();
+            seg.calculate_a(Fabrik::Backwards);
             previous_point = seg.start_point;
+        }
+        // forwards: origin -> end effector
+        let segments = &mut self.limbs;
+        let mut segments_iter = segments.iter_mut();
+        let a = segments_iter.next().unwrap();
+        a.start_point = Some(origin);
+        a.calculate_a(Fabrik::Forwards);
+        let mut previous_point = a.end_point;
+        for seg in segments_iter {
+            seg.start_point = previous_point;
+            seg.calculate_a(Fabrik::Forwards);
+            previous_point = seg.end_point;
         }
     }
     fn straight_point(&mut self, angle: f32) {
